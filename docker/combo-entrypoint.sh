@@ -8,7 +8,11 @@ set -e
 export PATH="/command:/package/admin/s6/command:${PATH}"
 
 export HERMES_HOME="${HERMES_HOME:-/opt/data}"
-export HOME="${HOME:-${HERMES_HOME}}"          # webui probes $HOME/workspace; /root is not traversable
+# Force HOME to the writable data dir. The base agent image inherits HOME=/root,
+# which the unprivileged "hermes" user (uid 10000) cannot traverse — webui's
+# workspace/agent probes then crash with PermissionError on /root/... .
+# HERMES_HOME is the agent's real home anyway, so this is safe.
+export HOME="${HERMES_HOME}"
 export HERMES_WEBUI_STATE_DIR="${HERMES_WEBUI_STATE_DIR:-${HERMES_HOME}/webui}"
 export HERMES_WEBUI_HOST="${HERMES_WEBUI_HOST:-0.0.0.0}"
 export HERMES_WEBUI_PORT="${HERMES_WEBUI_PORT:-8787}"

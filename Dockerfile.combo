@@ -1,0 +1,29 @@
+# Hermes Combo Image: latest official agent + latest webui (single container)
+# Mirrors the linkease/hermes deployment shape: gateway + webui in one container.
+# Base: official agent image (prebuilt, includes hermes-agent + python venv + s6 tooling)
+FROM nousresearch/hermes-agent:latest
+
+# --- WebUI layer ---
+ENV HERMES_WEBUI_DIR=/opt/hermes-webui
+WORKDIR /opt/hermes-webui
+# WebUI source from this repo (context root). .dockerignore keeps .git out.
+COPY . /opt/hermes-webui
+
+# Install WebUI runtime deps into the agent venv (pyyaml, cryptography, ...)
+RUN /opt/hermes/.venv/bin/python -m pip install --no-cache-dir \
+        -r /opt/hermes-webui/requirements.txt || \
+    /opt/hermes/.venv/bin/pip install --no-cache-dir \
+        -r /opt/hermes-webui/requirements.txt
+
+# Make webui writable by the agent runtime user
+RUN chown -R hermes:hermes /opt/hermes-webui 2>/dev/null || true
+
+# --- Combined entrypoint: gateway (background) + webui (foreground) ---
+COPY docker/combo-entrypoint.sh /usr/local/bin/combo-entrypoint.sh
+RUN chmod +x /usr/local/bin/combo-entrypoint.sh
+
+ENV HERMES_WEBUI_HOST=0.0.0.0
+ENV HERMES_WEBUI_PORT=8787
+EXPOSE 8787 8642
+
+ENTRYPOINT ["/usr/local/bin/combo-entrypoint.sh"]

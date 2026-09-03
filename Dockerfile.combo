@@ -1,6 +1,6 @@
 # Hermes Combo Image: latest official agent + latest webui (single container)
 # Mirrors the linkease/hermes deployment shape: gateway + webui in one container.
-# Base: official agent image (prebuilt, includes hermes-agent + python venv + s6 tooling)
+# Base: official agent image (prebuilt, includes hermes-agent + uv + s6 tooling)
 FROM nousresearch/hermes-agent:latest
 
 # --- WebUI layer ---
@@ -9,10 +9,10 @@ WORKDIR /opt/hermes-webui
 # WebUI source from this repo (context root). .dockerignore keeps .git out.
 COPY . /opt/hermes-webui
 
-# Install WebUI runtime deps into the agent venv (pyyaml, cryptography, ...)
-RUN /opt/hermes/.venv/bin/python -m pip install --no-cache-dir \
-        -r /opt/hermes-webui/requirements.txt || \
-    /opt/hermes/.venv/bin/pip install --no-cache-dir \
+# Install WebUI runtime deps into the agent venv using uv (agent image has no pip)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --python /opt/hermes/.venv/bin/python \
+        --no-cache \
         -r /opt/hermes-webui/requirements.txt
 
 # Make webui writable by the agent runtime user
